@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedSafe – Medication Safety Assistant</title>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #e8f4fd 0%, #f0faf5 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      background: linear-gradient(90deg, #1a6b3c 0%, #2196a0 100%);
+      color: white;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    header .logo { font-size: 32px; }
+    header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+    header p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+
+    /* ── Main Layout ── */
+    main {
+      width: 100%;
+      max-width: 820px;
+      padding: 28px 16px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── Disclaimer Banner ── */
+    .disclaimer {
+      background: #fff8e1;
+      border-left: 4px solid #f59e0b;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #78350f;
+      line-height: 1.5;
+    }
+    .disclaimer strong { color: #b45309; }
+
+    /* ── Chat Window ── */
+    .chat-window {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 460px;
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 24px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 520px;
+    }
+
+    /* ── Message Bubbles ── */
+    .message {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: none; } }
+
+    .message.user { flex-direction: row-reverse; }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .message.bot .avatar { background: #e8f4fd; }
+    .message.user .avatar { background: #d1fae5; }
+
+    .bubble {
+      max-width: 75%;
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 14.5px;
+      line-height: 1.65;
+    }
+    .message.bot .bubble {
+      background: #f4f8ff;
+      border: 1px solid #dbeafe;
+      border-top-left-radius: 4px;
+      color: #1e293b;
+    }
+    .message.user .bubble {
+      background: linear-gradient(135deg, #1a6b3c, #2196a0);
+      color: white;
+      border-top-right-radius: 4px;
+    }
+
+    /* ── Typing Indicator ── */
+    .typing { display: flex; align-items: center; gap: 5px; padding: 10px 14px; }
+    .typing span {
+      width: 8px; height: 8px; background: #94a3b8; border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-8px)} }
+
+    /* ── Example Prompts ── */
+    .examples-section { padding: 0 20px 14px; border-top: 1px solid #f1f5f9; }
+    .examples-label { font-size: 12px; color: #94a3b8; margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .examples { display: flex; flex-wrap: wrap; gap: 8px; }
+    .example-chip {
+      background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 20px;
+      padding: 6px 13px; font-size: 12.5px; color: #475569; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .example-chip:hover { background: #dbeafe; border-color: #93c5fd; color: #1e40af; }
+
+    /* ── Input Area ── */
+    .input-area {
+      padding: 16px 20px;
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .input-wrapper { flex: 1; position: relative; }
+    textarea {
+      width: 100%;
+      min-height: 50px;
+      max-height: 130px;
+      padding: 13px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 14.5px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s;
+      line-height: 1.5;
+      color: #1e293b;
+    }
+    textarea:focus { border-color: #2196a0; }
+    textarea::placeholder { color: #94a3b8; }
+
+    button.send-btn {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, #1a6b3c, #2196a0);
+      border: none; border-radius: 12px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.2s, transform 0.1s;
+      flex-shrink: 0;
+    }
+    button.send-btn:hover { opacity: 0.88; transform: scale(1.04); }
+    button.send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    button.send-btn svg { width: 20px; height: 20px; fill: white; }
+
+    /* ── Info Cards ── */
+    .info-cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: white; border-radius: 12px; padding: 18px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .card .icon { font-size: 26px; margin-bottom: 8px; }
+    .card h3 { font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 6px; }
+    .card p { font-size: 12.5px; color: #64748b; line-height: 1.55; }
+
+    /* ── Severity Badge inside messages ── */
+    .severity-HIGH, .severity-CRITICAL { color: #dc2626; font-weight: 600; }
+    .severity-MODERATE { color: #d97706; font-weight: 600; }
+    .severity-LOW { color: #16a34a; font-weight: 600; }
+
+    /* ── Config Notice ── */
+    #config-notice {
+      background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
+      padding: 12px 16px; font-size: 13px; color: #991b1b;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">💊</div>
+  <div>
+    <h1>MedSafe</h1>
+    <p>AI-Powered Medication Safety Assistant</p>
+  </div>
+</header>
+
+<main>
+
+  <div class="disclaimer">
+    <strong>⚠️ Medical Disclaimer:</strong> MedSafe provides general drug interaction information for educational purposes only. It is <strong>not</strong> a substitute for professional medical advice, diagnosis, or treatment. Always consult your doctor or pharmacist before making any medication decisions.
+  </div>
+
+  <div id="config-notice">
+    ⚙️ <strong>Setup Required:</strong> Please open this file and set your <code>API_ENDPOINT</code> variable (line ~200) to your API Gateway URL from the CDK deployment.
+  </div>
+
+  <div class="chat-window">
+    <div class="chat-messages" id="chatMessages">
+      <!-- Welcome message -->
+      <div class="message bot">
+        <div class="avatar">🤖</div>
+        <div class="bubble">
+          Hello! I'm <strong>MedSafe</strong>, your medication safety assistant. 👋<br><br>
+          Tell me which medications you're taking and what you're eating or drinking, and I'll check for any potential interactions. For example:<br><br>
+          <em>"I'm taking Warfarin and Aspirin. Is that safe?"</em><br>
+          <em>"I take Simvastatin — can I drink grapefruit juice?"</em>
+        </div>
+      </div>
+    </div>
+
+    <div class="examples-section">
+      <div class="examples-label">Try asking</div>
+      <div class="examples">
+        <div class="example-chip" onclick="fillExample(this)">I take Warfarin and Ibuprofen — is that okay?</div>
+        <div class="example-chip" onclick="fillExample(this)">Can I drink alcohol while on Metformin?</div>
+        <div class="example-chip" onclick="fillExample(this)">I take Simvastatin. Can I have grapefruit juice with breakfast?</div>
+        <div class="example-chip" onclick="fillExample(this)">I'm on Levothyroxine. Can I have coffee in the morning?</div>
+        <div class="example-chip" onclick="fillExample(this)">I take Lisinopril. Are bananas safe?</div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea
+          id="userInput"
+          placeholder="Type your medications and what you're eating or drinking..."
+          rows="2"
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+      </div>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="info-cards">
+    <div class="card">
+      <div class="icon">💊</div>
+      <h3>Drug–Drug Interactions</h3>
+      <p>Find out if two or more medications you take interact with each other.</p>
+    </div>
+    <div class="card">
+      <div class="icon">🥤</div>
+      <h3>Drug–Food Interactions</h3>
+      <p>Learn which foods (like grapefruit) can change how your medication works.</p>
+    </div>
+    <div class="card">
+      <div class="icon">🍷</div>
+      <h3>Drug–Alcohol Interactions</h3>
+      <p>Check whether alcohol is safe to consume with your current medications.</p>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // ══════════════════════════════════════════════════════════════════
+  //  CONFIGURATION — Replace this with your actual API Gateway URL
+  //  from the CDK deploy output (the "ApiEndpoint" value)
+  //  Example: "https://abc123xyz.execute-api.us-east-1.amazonaws.com/prod/"
+  // ══════════════════════════════════════════════════════════════════
+  const API_ENDPOINT = "YOUR_API_GATEWAY_URL_HERE/chat";
+  // ══════════════════════════════════════════════════════════════════
+
+  const messagesEl = document.getElementById("chatMessages");
+  const inputEl = document.getElementById("userInput");
+  const sendBtn = document.getElementById("sendBtn");
+
+  // Show config notice if endpoint not set
+  if (API_ENDPOINT.includes("YOUR_API_GATEWAY")) {
+    document.getElementById("config-notice").style.display = "block";
+  }
+
+  function autoResize(el) {
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 130) + "px";
+  }
+
+  function handleKey(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function fillExample(el) {
+    inputEl.value = el.textContent;
+    autoResize(inputEl);
+    inputEl.focus();
+  }
+
+  function appendMessage(text, role) {
+    const wrapper = document.createElement("div");
+    wrapper.className = `message ${role}`;
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = role === "bot" ? "🤖" : "🧑";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+
+    if (role === "bot") {
+      // Render newlines as <br> and bold **text**
+      bubble.innerHTML = text
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    } else {
+      bubble.textContent = text;
+    }
+
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(bubble);
+    messagesEl.appendChild(wrapper);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function appendTyping() {
+    const wrapper = document.createElement("div");
+    wrapper.className = "message bot";
+    wrapper.id = "typing-indicator";
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = "🤖";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(bubble);
+    messagesEl.appendChild(wrapper);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function removeTyping() {
+    const el = document.getElementById("typing-indicator");
+    if (el) el.remove();
+  }
+
+  async function sendMessage() {
+    const message = inputEl.value.trim();
+    if (!message) return;
+
+    // Disable input
+    inputEl.value = "";
+    inputEl.style.height = "auto";
+    sendBtn.disabled = true;
+
+    // Show user message
+    appendMessage(message, "user");
+    appendTyping();
+
+    try {
+      const response = await fetch(API_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      });
+
+      const data = await response.json();
+      removeTyping();
+
+      if (response.ok) {
+        appendMessage(data.reply, "bot");
+      } else {
+        appendMessage("Sorry, I ran into an error. Please try again in a moment.", "bot");
+      }
+    } catch (err) {
+      removeTyping();
+      if (API_ENDPOINT.includes("YOUR_API_GATEWAY")) {
+        appendMessage("⚙️ The API endpoint hasn't been configured yet. Please follow the deployment guide to set up your API Gateway URL.", "bot");
+      } else {
+        appendMessage("I'm having trouble connecting right now. Please check your internet connection and try again.", "bot");
+      }
+    }
+
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+</script>
+</body>
+</html>
